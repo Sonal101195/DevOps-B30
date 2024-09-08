@@ -1,0 +1,15 @@
+sudo yum install docker
+sudo systemctl start docker
+sudo systemctl enable docker
+vim dockerfile
+FROM amazonlinux
+     RUN yum update && yum install nginx -y
+     EXPOSE 80
+    #CMD ["./usr/sbin/nginx"] 
+    CMD ["nginx", "-g", "daemon off;"]
+sudo docker build -t remote .
+sudo docker images
+sudo docker run -d -p remote
+sudo docker ps
+
+hit the ip of intance 1st add port 80 in the Security group
