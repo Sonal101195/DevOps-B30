@@ -1,0 +1,29 @@
+    sudo yum list | grep java-11
+    sudo yum install java-11
+    curl -O https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.93/bin/apache-tomcat-9.0.93.zip
+    sudo unzip tomcat
+    ls
+    sudo unzip apache-tomcat-9.0.93.zip
+    ls
+    cd apache-tomcat-9.0.93/
+    ls
+   cd bin/
+   ls
+   bash catalina.sh start
+   curl localhost 80:80
+   sudo bash catalina.sh start  
+   sudo yum install git -y
+   ls
+   sudo git clone https://github.com/Pritam-Khergade/student-ui.git
+   ls
+   cd student-ui/
+   ls
+   sudo yum install maven -y
+   sudo mvn clean package
+   ls
+   cd target/
+   ls
+   sudo cp studentapp-2.2-SNAPSHOT.war ~/apache-tomcat-9.0.93/webapps/  
+   hit ip on google add 8080 in security group in instance 
+   http://13.201.1.73:8080/studentapp-2.2-SNAPSHOT
+
