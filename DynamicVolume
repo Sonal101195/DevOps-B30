@@ -1,0 +1,85 @@
+Store Kubernetes volumes with Amazon EBS
+https://docs.aws.amazon.com/eks/latest/userguide/ebs-csi.html
+------------------------------------------------------------------------------------
+1. first we have to create a cluster. (cluster name = ex. chai)
+---------------------------------------------------------------------------------------------------------------
+Create an IAM OIDC provider for your cluster with ekctl
+$ cluster_name=chai
+$ oidc_id=$(aws eks describe-cluster --name $cluster_name --query "cluster.identity.oidc.issuer" --region ap-south-1 --output text | cut -d '/' -f 5)
+$ eksctl utils associate-iam-oidc-provider --cluster $cluster_name --approve --region ap-south-1
+---------------------------------------------------------------------------------------------------------------
+2. An existing cluster. To see the required platform version, run the following      command.
+	$ aws eks describe-addon-versions --addon-name aws-ebs-csi-driver
+ 3. To create your Amazon EBS CSI plugin IAM role with eksctl.
+$ eksctl create iamserviceaccount \
+        --name ebs-csi-controller-sa \
+        --namespace kube-system \
+        --cluster chai\
+        --role-name AmazonEKS_EBS_CSI_DriverRole \
+        --role-only \
+        --attach-policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy \
+        --approve  --region ap-south-1
+    
+4. Creating an Amazon EKS add-on
+$eksctl utils describe-addon-versions --kubernetes-version 1.30 | grep AddonName	
+
+Note : goto IAM Role ---> AmazonEBSCSIDriverPolicy ---> copy ARN & paste below cmd.
+$ eksctl create addon --cluster chai --name aws-ebs-csi-driver --version latest --region ap-south-1 --service-account-role-arn arn:aws:iam::970653867674:role/AmazonEKS_EBS_CSI_DriverRole --force
+
+Then Add-on Created ----> Goto EKS cluster & check add-on
+ 
+------------------------------------------------------------------------------------
+Deploy :
+for deployment we have to create :
+1. pv.yaml   2. pvc.yaml  3. pod.yaml
+Otherwise we have to create only one YAML file with name: dynamic-pvc.yaml
+and attach all 3 files in dynamic-pvc.yaml
+dynamic-pvc.yaml :
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-sc
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ebs-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-sc
+  resources:
+    requests:
+      storage: 4Gi
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app
+spec:
+  containers:
+  - name: app
+    image: centos
+    command: ["/bin/sh"]
+    args: ["-c", "while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"]
+    volumeMounts:
+    - name: persistent-storage
+      mountPath: /data
+  volumes:
+  - name: persistent-storage
+    persistentVolumeClaim:
+      claimName: ebs-claim
+
+$ kubectl apply -f dynamic-pvc.yaml 
+
+verify the deployment :
+$kubectl get pods
+Once the pod is running, you can verify that the EBS volume has been mounted:
+$kubectl exec -it app -- /bin/bash     # this cmd are not working so hit other cmd 
+$ kubectl exec app -- cat /data/out.txt
+df -h /data
+
